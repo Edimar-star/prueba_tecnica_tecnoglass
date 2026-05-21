@@ -1,0 +1,152 @@
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <h5 class="fw-bold text-primary-tg">
+      <i class="bi bi-speedometer2 me-2"></i>Dashboard Operativo
+    </h5>
+  </div>
+
+  @if (loading()) {
+    <div class="col-12 text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+    </div>
+  } @else if (error()) {
+    <div class="col-12">
+      <div class="alert alert-danger">{{ error() }}</div>
+    </div>
+  } @else {
+    <!-- KPI Cards -->
+    <div class="col-6 col-md-3">
+      <div class="card card-stat p-3 h-100">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-primary bg-opacity-10 p-2">
+            <i class="bi bi-clipboard-data text-primary fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-2 fw-bold text-primary-tg">{{ activas.length }}</div>
+            <div class="text-muted small">Órdenes activas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <div class="card card-stat p-3 h-100">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-success bg-opacity-10 p-2">
+            <i class="bi bi-check-circle text-success fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-2 fw-bold" style="color:var(--tg-success)">{{ completadas.length }}</div>
+            <div class="text-muted small">Órdenes completadas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <div class="card card-stat p-3 h-100">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-info bg-opacity-10 p-2">
+            <i class="bi bi-window-stack text-info fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-2 fw-bold text-info">{{ totalVentanas }}</div>
+            <div class="text-muted small">Total ventanas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <div class="card card-stat p-3 h-100">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-warning bg-opacity-10 p-2">
+            <i class="bi bi-boxes text-warning fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-2 fw-bold text-warning">{{ ventanasCompletadas }}</div>
+            <div class="text-muted small">Ventanas empacadas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Distribución por estación -->
+    <div class="col-12 col-lg-4">
+      <div class="card card-stat p-3 h-100">
+        <h6 class="fw-bold mb-3 text-primary-tg">
+          <i class="bi bi-diagram-3 me-1"></i>Ventanas por Estación
+        </h6>
+        @for (est of data()?.distribucion_estaciones ?? []; track est.EstacionId) {
+          <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1">
+              <span class="fw-semibold">{{ est.NombreEstacion }}</span>
+              <span class="text-muted">{{ est.CantidadVentanas }} ventanas</span>
+            </div>
+            <div class="progress" style="height:10px">
+              <div class="progress-bar"
+                   [style.width.%]="totalVentanas ? est.CantidadVentanas * 100 / totalVentanas : 0"
+                   [style.background]="stationColor(est.Orden)">
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Tabla de órdenes activas -->
+    <div class="col-12 col-lg-8">
+      <div class="card card-stat p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold text-primary-tg mb-0">
+            <i class="bi bi-table me-1"></i>Órdenes Activas
+          </h6>
+          <a routerLink="/ordenes/crear" class="btn btn-sm bg-primary-tg">
+            <i class="bi bi-plus-lg"></i> Nueva Orden
+          </a>
+        </div>
+
+        @if (activas.length === 0) {
+          <p class="text-muted text-center py-3">No hay órdenes activas</p>
+        } @else {
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Código</th>
+                  <th>Ventanas</th>
+                  <th>Avance</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (o of activas; track o.Id) {
+                  <tr>
+                    <td class="fw-semibold">{{ o.Codigo }}</td>
+                    <td>
+                      <span class="text-success">{{ o.VentanasCompletadas }}</span>
+                      / {{ o.TotalVentanas }}
+                    </td>
+                    <td style="min-width:140px">
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height:8px">
+                          <div class="progress-bar" [style.width.%]="o.PorcentajeAvance"></div>
+                        </div>
+                        <span class="small fw-bold text-primary-tg">{{ o.PorcentajeAvance }}%</span>
+                      </div>
+                    </td>
+                    <td>
+                      <a [routerLink]="['/ordenes', o.Id]" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-eye"></i>
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

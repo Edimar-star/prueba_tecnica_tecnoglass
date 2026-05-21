@@ -1,0 +1,196 @@
+@if (orden(); as o) {
+  <div class="row g-3">
+    <!-- Cabecera -->
+    <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
+      <a routerLink="/ordenes" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+
+      @if (editando()) {
+        <!-- Edición inline del código -->
+        <input type="text" class="form-control form-control-sm" style="max-width:200px"
+               [value]="nuevoCodigoEdit()"
+               (input)="nuevoCodigoEdit.set($any($event.target).value)"
+               (keydown.enter)="guardarEdicion()"
+               (keydown.escape)="editando.set(false)">
+        <button class="btn btn-success btn-sm" [disabled]="saving()" (click)="guardarEdicion()" title="Guardar">
+          @if (saving()) {
+            <span class="spinner-border" style="width:.75rem;height:.75rem;border-width:2px"></span>
+          } @else {
+            <i class="bi bi-check-lg"></i>
+          }
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" [disabled]="saving()"
+                (click)="editando.set(false)" title="Cancelar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      } @else {
+        <div class="flex-grow-1">
+          <h5 class="fw-bold text-primary-tg mb-0">Orden: {{ o.Codigo }}</h5>
+          <span [class]="'badge ' + badgeOrden(o.Estado)">{{ o.Estado }}</span>
+        </div>
+
+        <!-- Botón editar -->
+        <button class="btn btn-outline-secondary btn-sm" (click)="iniciarEdicion()" title="Editar código">
+          <i class="bi bi-pencil"></i>
+        </button>
+
+        <!-- Botón eliminar con confirmación inline -->
+        @if (confirmandoEliminar()) {
+          <span class="small text-danger fw-semibold">¿Eliminar orden?</span>
+          <button class="btn btn-danger btn-sm" [disabled]="saving()" (click)="eliminarOrden()">
+            @if (saving()) {
+              <span class="spinner-border" style="width:.75rem;height:.75rem;border-width:2px"></span>
+            } @else {
+              Confirmar
+            }
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" [disabled]="saving()"
+                  (click)="confirmandoEliminar.set(false)">
+            Cancelar
+          </button>
+        } @else {
+          <button class="btn btn-outline-danger btn-sm" (click)="confirmandoEliminar.set(true)" title="Eliminar orden">
+            <i class="bi bi-trash"></i>
+          </button>
+        }
+      }
+    </div>
+
+    @if (error()) {
+      <div class="col-12">
+        <div class="alert alert-warning py-2 small">{{ error() }}</div>
+      </div>
+    }
+
+    <!-- KPIs -->
+    <div class="col-6 col-md-3">
+      <div class="card card-stat p-3 text-center">
+        <div class="fs-3 fw-bold text-primary-tg">{{ o.TotalVentanas }}</div>
+        <div class="small text-muted">Total</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card card-stat p-3 text-center">
+        <div class="fs-3 fw-bold text-success">{{ o.VentanasCompletadas }}</div>
+        <div class="small text-muted">Empacadas</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card card-stat p-3 text-center">
+        <div class="fs-3 fw-bold text-warning">{{ o.VentanasEnProceso }}</div>
+        <div class="small text-muted">En proceso</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card card-stat p-3 text-center">
+        <div class="fs-3 fw-bold text-secondary">{{ o.VentanasPendientes }}</div>
+        <div class="small text-muted">Pendientes</div>
+      </div>
+    </div>
+
+    <!-- Barra de progreso global -->
+    <div class="col-12">
+      <div class="card card-stat p-3">
+        <div class="d-flex justify-content-between small fw-semibold mb-1">
+          <span>Progreso global</span>
+          <span class="text-primary-tg">{{ o.PorcentajeAvance }}%</span>
+        </div>
+        <div class="progress" style="height:14px">
+          <div class="progress-bar" [style.width.%]="o.PorcentajeAvance">
+            {{ o.PorcentajeAvance }}%
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grilla de ventanas -->
+    <div class="col-12">
+      <div class="card card-stat p-3">
+        <h6 class="fw-bold text-primary-tg mb-3">
+          <i class="bi bi-grid-3x3 me-1"></i>Ventanas del lote
+        </h6>
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2">
+          @for (v of o.ventanas; track v.Id) {
+            <div class="col">
+              <div class="card p-2 text-center border-0 bg-light rounded">
+                <div class="mb-1">
+                  <span [class]="'badge-station ' + stationBadge(v)">
+                    {{ stationLabel(v) }}
+                  </span>
+                </div>
+                <div class="small text-muted text-truncate" style="font-size:.65rem" [title]="v.Id">
+                  {{ v.CodigoQR | slice:0:8 }}…
+                </div>
+                <div class="d-flex gap-1 mt-1 justify-content-center">
+                  @if (canAdvance(v)) {
+                    <button class="btn btn-success btn-sm py-0 px-1"
+                            style="font-size:.7rem"
+                            [disabled]="advancing() === v.Id"
+                            (click)="avanzar(v)"
+                            title="Avanzar estación">
+                      @if (advancing() === v.Id) {
+                        <span class="spinner-border" style="width:.75rem;height:.75rem;border-width:2px"></span>
+                      } @else {
+                        <i class="bi bi-arrow-right-circle"></i>
+                      }
+                    </button>
+                  } @else {
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                  }
+                  <a [routerLink]="['/trazabilidad', v.Id]"
+                     class="btn btn-outline-secondary btn-sm py-0 px-1"
+                     style="font-size:.7rem" title="Ver trazabilidad">
+                    <i class="bi bi-qr-code"></i>
+                  </a>
+                  @if (v.Estado === 'PENDIENTE') {
+                    <button class="btn btn-outline-danger btn-sm py-0 px-1"
+                            style="font-size:.7rem"
+                            [disabled]="removingVentana() === v.Id"
+                            (click)="eliminarVentana(v)"
+                            title="Eliminar ventana">
+                      @if (removingVentana() === v.Id) {
+                        <span class="spinner-border" style="width:.75rem;height:.75rem;border-width:2px"></span>
+                      } @else {
+                        <i class="bi bi-trash"></i>
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Agregar ventanas -->
+    <div class="col-12">
+      <div class="card card-stat p-3">
+        <h6 class="fw-bold text-primary-tg mb-2">
+          <i class="bi bi-plus-circle me-1"></i>Agregar ventanas
+        </h6>
+        <div class="d-flex align-items-center gap-2">
+          <input type="number" class="form-control form-control-sm" style="width:100px"
+                 min="1" max="500"
+                 [value]="cantidadAgregar()"
+                 (input)="cantidadAgregar.set(+$any($event.target).value)">
+          <button class="btn bg-primary-tg btn-sm text-white" [disabled]="saving()" (click)="agregarVentanas()">
+            @if (saving()) {
+              <span class="spinner-border spinner-border-sm"></span>
+            } @else {
+              Agregar
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+} @else if (loading()) {
+  <div class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+} @else {
+  <div class="alert alert-danger">{{ error() }}</div>
+}

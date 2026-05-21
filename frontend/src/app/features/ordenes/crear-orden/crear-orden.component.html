@@ -1,0 +1,44 @@
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6">
+    <div class="card card-stat p-4">
+      <div class="d-flex align-items-center gap-2 mb-4">
+        <a routerLink="/ordenes" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <h5 class="fw-bold text-primary-tg mb-0">Nueva Orden de Producción</h5>
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-danger py-2 small">{{ error() }}</div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Código de Orden <span class="text-danger">*</span></label>
+          <input type="text" class="form-control text-uppercase" formControlName="codigo"
+                 placeholder="Ej: OP-2024-001">
+          @if (form.get('codigo')?.invalid && form.get('codigo')?.touched) {
+            <div class="invalid-feedback d-block">Mínimo 3 caracteres</div>
+          }
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Cantidad de Ventanas <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" formControlName="total_ventanas" min="1" max="1000">
+          <div class="form-text">Máx. 1000 ventanas por lote</div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn bg-primary-tg flex-grow-1" [disabled]="loading() || form.invalid">
+            @if (loading()) {
+              <span class="spinner-border spinner-border-sm me-2"></span>Creando...
+            } @else {
+              <i class="bi bi-plus-circle me-1"></i>Crear Orden
+            }
+          </button>
+          <a routerLink="/ordenes" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

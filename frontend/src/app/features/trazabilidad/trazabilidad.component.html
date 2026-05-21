@@ -1,0 +1,134 @@
+<div class="row g-3">
+  <div class="col-12">
+    <h5 class="fw-bold text-primary-tg">
+      <i class="bi bi-qr-code-scan me-2"></i>Trazabilidad de Ventana
+    </h5>
+  </div>
+
+  <!-- Buscador -->
+  <div class="col-12">
+    <div class="card card-stat p-3">
+      <label class="form-label fw-semibold">Código QR o ID de ventana</label>
+      <div class="input-group">
+        <input type="text" class="form-control"
+               [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+               placeholder="Escanea el QR o pega el UUID de la ventana"
+               (keydown.enter)="buscar()">
+        <button class="btn bg-primary-tg" (click)="buscar()" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner-border spinner-border-sm"></span>
+          } @else {
+            <i class="bi bi-search"></i> Buscar
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="col-12">
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-1"></i>{{ error() }}
+      </div>
+    </div>
+  }
+
+  @if (ventana(); as v) {
+    <!-- Info de la ventana -->
+    <div class="col-12 col-md-4">
+      <div class="card card-stat p-3 h-100">
+        <h6 class="fw-bold text-primary-tg mb-3">Información de la Ventana</h6>
+
+        <div class="mb-2">
+          <span [class]="'badge ' + estadoBadge(v.Estado)">{{ v.Estado }}</span>
+        </div>
+
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td class="text-muted small">Orden</td>
+              <td class="fw-semibold">
+                <a [routerLink]="['/ordenes', v.OrdenProduccionId]">{{ v.CodigoOrden }}</a>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted small">Estación actual</td>
+              <td class="fw-semibold">{{ v.EstacionActual ?? 'Pendiente' }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small">Creada</td>
+              <td class="small">{{ v.FechaCreacion | slice:0:10 }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small">ID</td>
+              <td class="small text-break">{{ v.Id }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Flujo de estaciones -->
+        <div class="mt-3">
+          <div class="d-flex justify-content-between align-items-center">
+            @for (label of ['Corte','Troquel','Ensamble','Empaque']; track label; let i = $index) {
+              <div class="text-center flex-grow-1">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center"
+                     style="width:32px;height:32px;font-size:.75rem;font-weight:700"
+                     [style.background]="(v.OrdenEstacion ?? 0) >= i + 1 ? 'var(--tg-primary)' : '#e2e8f0'"
+                     [style.color]="(v.OrdenEstacion ?? 0) >= i + 1 ? '#fff' : '#94a3b8'">
+                  {{ i + 1 }}
+                </div>
+                <div class="small text-muted mt-1" style="font-size:.65rem">{{ label }}</div>
+              </div>
+              @if (i < 3) {
+                <div class="flex-grow-0 text-muted" style="font-size:.7rem">→</div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- QR image -->
+        @if (qrBase64()) {
+          <div class="mt-3 text-center">
+            <img [src]="'data:image/png;base64,' + qrBase64()"
+                 alt="QR de trazabilidad" class="img-fluid" style="max-width:160px">
+            <div class="small text-muted mt-1">Escanea para acceder</div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Timeline de movimientos -->
+    <div class="col-12 col-md-8">
+      <div class="card card-stat p-3 h-100">
+        <h6 class="fw-bold text-primary-tg mb-3">
+          <i class="bi bi-clock-history me-1"></i>Historial de Movimientos
+        </h6>
+
+        @if (v.movimientos.length === 0) {
+          <p class="text-muted text-center py-3">La ventana aún no ha sido procesada</p>
+        } @else {
+          <div class="timeline">
+            @for (m of v.movimientos; track m.Id) {
+              <div class="timeline-item">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <span class="fw-semibold">{{ m.NombreEstacion }}</span>
+                    <span class="text-muted small ms-2">por {{ m.NombreUsuario }}</span>
+                  </div>
+                  <span class="small text-muted">
+                    {{ m.FechaMovimiento | slice:0:10 }} {{ m.FechaMovimiento | slice:11:16 }}
+                  </span>
+                </div>
+                @if (m.Observacion) {
+                  <p class="small text-muted mb-0 mt-1">
+                    <i class="bi bi-chat-left-text me-1"></i>{{ m.Observacion }}
+                  </p>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

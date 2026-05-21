@@ -1,0 +1,42 @@
+@if (auth.isAuthenticated()) {
+  <nav class="navbar navbar-expand-lg navbar-tecnoglass navbar-dark px-3">
+    <a class="navbar-brand fw-bold d-flex align-items-center gap-2" routerLink="/dashboard">
+      <i class="bi bi-layers-fill"></i> Tecnoglass
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto gap-1">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">
+            <i class="bi bi-speedometer2"></i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/ordenes" routerLinkActive="active">
+            <i class="bi bi-clipboard-data"></i> Órdenes
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/trazabilidad" routerLinkActive="active">
+            <i class="bi bi-qr-code-scan"></i> Trazabilidad
+          </a>
+        </li>
+      </ul>
+
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-white-50 small">
+          <i class="bi bi-person-circle"></i>
+          {{ auth.currentUser()?.nombre }}
+          <span class="badge bg-secondary ms-1">{{ auth.currentUser()?.rol }}</span>
+        </span>
+        <button class="btn btn-outline-light btn-sm" (click)="auth.logout()">
+          <i class="bi bi-box-arrow-right"></i> Salir
+        </button>
+      </div>
+    </div>
+  </nav>
+}
