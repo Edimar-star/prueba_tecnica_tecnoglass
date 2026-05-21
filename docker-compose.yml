@@ -1,0 +1,152 @@
+version: '3.9'
+
+# ============================================================
+# Tecnoglass — Entorno Docker completo
+#   • sqlserver  → SQL Server 2022 (puerto 1433)
+#   • db-init    → inicializa la BD una sola vez
+#   • backend    → FastAPI          (puerto 8000)
+#   • frontend   → Angular / Nginx  (puerto 4200)
+#   • adminer    → UI web para SQL Server (puerto 8080)
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # SQL Server 2022
+  # ----------------------------------------------------------
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: tg_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "TecnoGlass2024!"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: >
+        /opt/mssql-tools18/bin/sqlcmd
+        -S localhost -U sa -P "TecnoGlass2024!" -C
+        -Q "SELECT 1" -b -o /dev/null
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+    networks:
+      - tg_net
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Inicialización de BD (se ejecuta una sola vez)
+  # Si la BD ya existe, el script sale sin hacer nada.
+  # ----------------------------------------------------------
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: tg_db_init
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    volumes:
+      - ./database:/sql:ro
+    command:
+      - bash
+      - -ec
+      - |
+          SQLCMD=/opt/mssql-tools18/bin/sqlcmd
+          echo "=== Verificando si la BD ya esta inicializada... ==="
+          if $$SQLCMD -S sqlserver -U sa -P 'TecnoGlass2024!' -C \
+              -Q "IF DB_ID('TecnoglassDB') IS NOT NULL AND EXISTS (SELECT 1 FROM TecnoglassDB.sys.tables WHERE name='Estaciones') PRINT 'YAEXISTE'" \
+              -h -1 2>/dev/null | grep -q YAEXISTE; then
+            echo ">>> TecnoglassDB ya inicializada. Omitiendo scripts."
+            exit 0
+          fi
+          echo "=== Inicializando base de datos (primera vez)... ==="
+          echo "  [1/3] Creando tablas..."
+          $$SQLCMD -S sqlserver -U sa -P 'TecnoGlass2024!' -C -i /sql/01_DDL_tablas.sql
+          echo "  [2/3] Creando Stored Procedures..."
+          $$SQLCMD -S sqlserver -U sa -P 'TecnoGlass2024!' -C -i /sql/02_SP_produccion.sql
+          echo "  [3/3] Cargando datos iniciales..."
+          $$SQLCMD -S sqlserver -U sa -P 'TecnoGlass2024!' -C -i /sql/03_seed_data.sql
+          echo "=== Base de datos inicializada correctamente. ==="
+    networks:
+      - tg_net
+    restart: "no"
+
+  # ----------------------------------------------------------
+  # Backend FastAPI
+  # ----------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tg_backend
+    environment:
+      DB_SERVER: sqlserver
+      DB_NAME: TecnoglassDB
+      DB_USER: sa
+      DB_PASSWORD: "TecnoGlass2024!"
+      DB_DRIVER: "ODBC Driver 18 for SQL Server"
+      DB_TRUST_CERT: "true"
+      JWT_SECRET_KEY: "docker-secret-cambia-esto-en-produccion-32ch"
+      JWT_EXPIRE_MINUTES: "480"
+      CORS_ORIGINS: "http://localhost:4200"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - tg_net
+    restart: on-failure
+
+  # ----------------------------------------------------------
+  # Frontend Angular servido con Nginx
+  # Nginx también actúa como proxy inverso hacia el backend
+  # ----------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tg_frontend
+    environment:
+      BACKEND_HOST: backend
+      # Restringe envsubst a solo esta variable; evita que nginx's $uri, $host, etc. sean sustituidos
+      NGINX_ENVSUBST_TEMPLATE_VARS: BACKEND_HOST
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - tg_net
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Adminer — UI web para administrar SQL Server
+  # Acceso: http://localhost:8080
+  #   Sistema:    MS SQL
+  #   Servidor:   sqlserver
+  #   Usuario:    sa
+  #   Contraseña: TecnoGlass2024!
+  #   BD:         TecnoglassDB
+  # ----------------------------------------------------------
+  adminer:
+    image: adminer:latest
+    container_name: tg_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - tg_net
+    restart: unless-stopped
+
+# ----------------------------------------------------------
+networks:
+  tg_net:
+    driver: bridge
+
+volumes:
+  sqlserver_data:
